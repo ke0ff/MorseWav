@@ -1,0 +1,267 @@
+Instructions for using ct.pl PERL script.
+Updated 12-Oct-2013 (ct.pl Rev B)
+by Joe Haas, ke0ff
+
+
+ct.pl is a PERL script that is used to convert plain text to morse code adapted from a script written
+by Gan Starling, KY8D.  Mr. Starling has apparently abandoned this script as I can no longer find reference
+to it on the web.  Thus, this document serves as the only reference I can provide as of this writing.
+
+The original script (cw.pl) was modified so that it could also generate custom tones and renamed ct.pl.
+The tone syntax uses the same *tag* syntax implemented by the original script.  The tone tags along with the
+CW parsing tags are listed below.  The orignal CW parsing features were retained so that ct.pl represents a
+comprehensive method for generating CW and/or simple tone wav sound files from simple to edit text file
+sources.
+
+If you are new to PERL, you can download an interpreter from www.perl.org.  This script was tested on PERL 5.
+You will also need the AUDIO::WAV module.  A copy of this module that seems to work for me (WINXP) is included
+as part of this ZIP archive.  After installing your PERL version of choice, copy the "Audio-WAV-0.13" folder
+into the "\Perl\lib\" folder under the installation root directory (usually C:\ or C:\Program Files\).  I only
+have access to Windows (sigh) so these instructions are WIN-centric.  After copying the Audio::Wav module,
+Execute "ppm" from a DOS prompt to enter the PERL Module Manager (it may take a while for ppm to load the
+database, but the application should start relatively quickly).  Scroll down to locate the "Audio-Wav" module
+(the modules are listed alphabetically).  Select the module then go to the "Action" tab on the drop-down menus
+and select "Install...".  After this is accomplished, close PPM and the ct.pl script should run without errors.
+
+Another module that is needed is Time::HiRes.  The PERL installer may ask if there are any standard module that
+you would like to add.  If so, select "Time::HiRes".  If not, check the ppm program to see if it is added
+automatically and add it manually if not.  On my installation, this module was available, so I did not have to
+get it off the web and install it as with the Audio::WAV module.  A copy of the Time module from my install is
+also included in the event that it might be needed.  DO NOT install the included time module unless it is
+missing from your PERL installation.
+
+There are several run-time options that can be included on the cmd line:
+--p[ath]    Text file path. Will output to same directory.
+--w[pm]     Words per minute: 2 < wpm < ?
+--to[ne]    Tone in Hz: 500 < Hz < ?
+--m[ax]     Max size in MB: 1 < MB < ?
+--i[ncr]    Increment of WPM, for each file 2nd thru Nth.
+--s[amp]    Sample rate: 8000, 11050, 22100, etc
+--d[iff]    Difficulty: 1 thru 10
+--co[dec]   Audio codec: wav or ogg
+--l[ang]    Language: en, eo, etc
+--ran[d]    Shuffle chars of each line to randomize.
+--v[erbose] Give verbose feedback.
+--h[elp]    Show this message.
+--ram[p]    set ramp (ms) (default = 2).
+--ta[il]    if zero, omit head/tail add-ons (default = 1).
+--ca[ll]    set new callsign (default = KY8D).
+
+The following is a list of all of the supported tags that may be embedded in the input text file:
+    *T1*		*TONE*		*RAMP*
+    *T2*		*DIFF*		*TAIL*
+    *TA*		*WPM*		*CALL*
+    *TD*		*LANG*		*GAP*
+    *TS1*		*RAND*		*VERB*
+    *TS2*		*KOCH*		*DISP*
+    *TR*		*INCR*		*NEXT*
+    *SAMPN*
+
+Some of these tags are described below.  I haven't used all of them, so if there is no description,
+I have not yet had the chance to use and understand the tag.  The tags are implemented by adding an "="
+followed by the new value at the end of the tag word (before the closing "*").  Thus, to set the CW
+speed to 20 WPM, the syntax is *WPM=20*.  Spaces are allowed, so *WPM = 20* is also valid, but I usually
+leave spaces out since it keeps the source file more compact.  Spaces inside the tag word are not allowed
+and will result in an error.
+
+*WPM=x* sets the morse code speed in words per minute
+*RAMP=x* sets Morse tone ramp time (ms).  15 to 75 ms is the useful limit to the morse ramp value,
+	though any positive value is processed.  This is the tone rise/fall time.
+*TAIL=x* tail enable flag (0 = no head or tail, 1 = enable head and tail, the default)
+	The "head" consists of the following info:
+
+	"CQ DE {call_sign} Speed = {??} WPM chars @ {??} WPM spacing Date = {??} *KA*"
+
+	Where the info in braces would be the current values (if the CW spacing is standard, the
+	"spacing" part of the message is omitted).
+
+	The "tail" consists of the following:
+
+	"*AR* DE {call_sign} *SK* *CL*"
+
+
+*CALL=x* allows user to specify callsign used in tail.  The callsign can also be placed in the audio file
+	with the *DOCALL* prosign.
+
+CT Tags:
+*TD=x* custom tone duration (ms)
+*T1=x* custom tone 1 (Hz)
+*T2=x* custom tone 2 (Hz)
+*TA=x* custom tone initial amplitude (%)
+*TR=x* custom tone attack/decay (%/sec) -- long time version of CW ramp
+	if amplitude reaches max or min before duration of tone is complete, the amplitude
+	remains at max or min.
+*TS1=x* custom tone 1 sweep (Hz/sec)
+*TS2=x* custom tone 2 sweep (sweeps tone frequency).  Sets the tone  sweep rate for each
+	of the 2 tone generators.  If the target tone reaches 0Hz, the tone sweep stops (even
+	though the tone duration continues to process).  If the target tone reaches
+	($sample_rate - 2) / 2 (NOTE: $sample_rate is the same as sample frequency)
+	the frequency stops at ($sample_rate - 2) / 2.  ($sample_rate - 2) / 2 is the highest
+	frequency possible using a discrete time system since $sample_rate / 2 aliases back to
+	0Hz.  However, it is observed that there is an audible alias in the frequencies leading
+	up to the nyquist rate.  Not sure why...
+*GAP=x* tag to allow morse word spaces to be supressed if x=0.  Otherwise,
+	any space, tab, newline, etc... is interpreted as a space which makes CT
+	text difficult to format. *GAP=1* enables spaces.
+*DISP=x* tag to enable raw D/A data dump (x=1) that can be captured using DOS re-direct to allow waveform
+	analysis (in something like LabView or Excel).
+
+Character map:
+    ' ' => 			word space if *GAP=1* or no space if *GAP=0*
+    '.' => . _ . _ . _ 		period
+    ',' => _ _ . . _ _ 		comma
+    ':' => _ _ _ . . . 		colon
+    '?' => . . _ _ . . 		question mark
+    "'" => . _ _ _ _ . 		single quote
+    '-' => _ . . . . _ 		dash
+    ';' => _ . _ . _ . 		semi-colon
+    '/' => _ . . _ . 		forward slash
+    '(' => _ . _ _ . 		open parenthesis
+    ')' => _ . _ _ . _		close parenthesis
+    '"' => . _ . . _ . 		double-quote
+    '_' => . . _ _ . _ 		underscore
+    '=' => _ . . . _ 		double-dash
+    '+' => . _ . _ . 		plus sign
+    '!' => _ . _ . _ _		exclamation point
+    '&' => .   . . . 		ampersand
+    '$' => . . . _ . . _ 	dollar sign
+    '@' => . _ _ . _ . 		"at" sign
+    
+    Letters/Numbers:
+    'A' => . _ 
+    'B' => _ . . . 
+    'C' => _ . _ . 
+    'D' => _ . . 
+    'E' => . 
+    'F' => . . _ . 
+    'G' => _ _ . 
+    'H' => . . . . 
+    'I' => . . 
+    'J' => . _ _ _ 
+    'K' => _ . _ 
+    'L' => . _ . . 
+    'M' => _ _ 
+    'N' => _ . 
+    'O' => _ _ _ 
+    'P' => . _ _ . 
+    'Q' => _ _ . _ 
+    'R' => . _ . 
+    'S' => . . . 
+    'T' => _ 
+    'U' => . . _ 
+    'V' => . . . _ 
+    'W'  => . _ _ 
+    'X'  => _ . . _ 
+    'Y'  => _ . _ _ 
+    'Z'  => _ _ . . 
+
+    '0'  => _ _ _ _ _ 
+    '1'  => . _ _ _ _ 
+    '2'  => . . _ _ _ 
+    '3'  => . . . _ _ 
+    '4'  => . . . . _ 
+    '5'  => . . . . . 
+    '6'  => _ . . . . 
+    '7'  => _ _ . . . 
+    '8'  => _ _ _ . . 
+    '9'  => _ _ _ _ . 
+
+    Esperanto characters. Work undelimited (without "*" brackets) when *LANG=EO*:
+    *Cx* => _ . _ . . 
+    *Gx* => _ _ . _ . 
+    *Hx* => _ _ _ _ 
+    *Jx* => . _ _ _ . 
+    *Sx* => . . . _ . 
+    *Ux* => . . _ _ 
+       
+    Supported prosigns:
+    *CT* => {tone}		insert custom tone using current tone parameters (see below)
+    *AA* => ._._		"End of line"
+    *AL* => ._._..		"Paragraph symbol"
+    *AR* => ._._.		"End of message" or "+" 
+    *AS* => ._...		"Wait"
+    *BT* => _ . . . _		"Break" or "Um, er, ah" or "="
+    *CL* => _ . _ . . _ . .	"Closing station"
+    *KA* => _ . _ . _		"Start of message"
+    *KN* => _ . _ _ .		"Over to named station"
+    *NR* => _ . . _ .		"Number(s) to follow"
+    *SK* => . . . _ . _		"End of contact"
+    *SN* => . . . _ .		"Understood" or "Sx" in Eo.
+    *IMI* => . . _ _ . .	"Huh?" or "I say again"
+    *SOS* => . . . _ _ _ . . .	"SOS"
+    *ERROR* => . . . . . . . .	"Error" (delete last attempted character)
+    *ATTENTION* => _ . _ . _	"Attention"
+    *DOCALL*			Sends contents of "Call Sign"
+    *NOOP* =>			Does nothing
+
+Useage/Examples
+
+The tags and CW text (if any) are entered into a text file, and that file is fed as a command line argument
+to the ct.pl script. The following is an example of a batch file I use to call the script.  There are a lot
+of command line options, and it makes it easier to keep them in a batch file than to enter them every time
+you invoke the script.  the file examples below feature the filename followed by an open brace ({).  The
+contents of the file follows until you reach the closing brace (}).  Note that the braces are NOT part of
+the txt file.
+
+ct_test.bat{ct.pl --p cabin.txt --w 20 --d 10 --to 450 --ram 15 --ta 0 --v 0 --samp 16000}
+
+The following is an example of the airline "cabin-alert tone", called cabin.txt (which is included as part
+of this ZIP archive):
+
+cabin.txt:{ *GAP=0**DISP=0*
+*TD=20**T1=600**T2=0**TA=0**TR=5000**TS1=0**TS2=0**CT*
+*TD=650**T1=600**T2=0**TR=-150**TS1=0**TS2=0**CT*
+*TD=20**T1=500**T2=0**TA=0**TR=5000**TS1=0**TS2=0**CT*
+*TD=800**T1=500**T2=0**TR=-125**TS1=0**TS2=0**CT*}
+
+To build the cabin tone, simply execute the ct_test.bat file.
+
+The script remembers all of the tone prameters as the source file is processed, so you only need to specify
+the ones that change from one *CT* tone element to the next.  This allows tone sequences to be "built-up" one
+tone (or tone pair) at a time.  Simple, but rich sounding musical tones can be assembled as well (easily
+accomplished if you are musically inclined).
+
+Ramping of tone amplitudes is recommended to soften the sound of the tone especially when starting a tone from
+silence or when drastically changing the amplitude of the tone output.  This is demonstrated in the cabin tone by
+the *TD=20* length tones.  The cabin.jpg image shows a plot of the cabin tone which illustrates the ramp feature
+at the beginning of each tone.  "Ramping" is also referred to as "attack" or "decay" where Attack is ramp-up of the
+amplitude, and decay is ramp-down the amplitude.  As one might note, the cabin tone is actually a pair of attack-decay
+tones where the attack is very fast, and the decay is very slow.
+
+For tones where the amplitude is constant, the format would be to do a fast attack, followed by a constant level,
+ending with a fast decay.  An rule of thumb for the attack/decay period is 10-50 ms.  Any faster (smaller ramp period),
+the tone will appear to have a "pop" when it starts and/or stops.  Any slower (larger ramp period), the ramp starts
+to become noticable.
+
+Sweept Tones
+
+There is an issue with sweept tones (tones that feature a frequency sweep) that I haven't been able to address.
+If you are trying to create a multi-step tone with one or more swept elements, there are issues with the tone
+phase/frequency for the element following the swept element(s).  To provide a work-around, I've added the *SAMPN=x*
+tag which allows you to force the sample number.  There isn't a lot of guidance for this tag, it is trial and error.
+However, x will generally be between 0 and 1000 (start at zero and work up, but don't use negative numbers).  The
+droopdrp tone is an example of using *SAMPN* :
+
+droopdrip.txt{ *GAP=0**DISP=1*
+*TD=125**T1=500**T2=0**TA=100**TR=0**TS1=-4000**TS2=0**CT*
+*SAMPN=198*
+*TD=225**T2=0**TR=0**TS1=4000**TS2=0**CT*
+*TD=20**TR=-5000**TS1=0**TS2=0**CT*}
+
+Without *SAMPN=198* placed between the elements, the frequency of the second element (which is supposed to start
+at zero, where the first element left off) starts out much higher than zero.  Resetting the sample number to a
+value close to zero resets the phase and gets the frequency corrected.  The tweeking comes in by listening (or
+plotting on a spreadsheet) for a "pop" or "click" at the transition and adjusting the SAMPN number to reduce
+(ideally, elliminate) the pop sound.
+
+Using BAT files
+
+I recommend using bat files to drive the ct.pl script.  This allows batch processing with "global" settings that can
+be easily managed.  Thus, you can "tweak" the parameters for cut-and-try testing and apply them accross several
+tone/morse files.  This is especially useful if you are creating a battery of custom ring tones.
+
+The "droopdrip.bat" file offers an example of this technique.  However, using BAT files requires some knowledge of
+DOS BAT syntax, so if you are unfamiliar with the innards of these files, this may be difficult to master at fist.
+Still, at their most basic, a BAT file can allow you to encapsulate the command line for the ct.pl execution line
+which may be very helpful by itself, and this implementation doesn't require any special knowledge beyond basic
+DOS commands.
